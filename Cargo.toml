@@ -1,0 +1,28 @@
+[package]
+name = "ens"
+version = "0.1.0"
+description = "Access the Ethereum Name Service"
+documentation = "https://docs.rs/ens"
+keywords = ["ens", "jsonrpc", "web3", "ethereum", "rpc", "client"]
+authors = ["Hideo Hattori <hhatto.jp@gmail.com>"]
+homepage = "https://github.com/hhatto/rust-ens"
+repository = "https://github.com/hhatto/rust-ens"
+license = "MIT"
+readme = "README.md"
+
+[dependencies]
+web3 = "0.3.1"
+tiny-keccak = "1.4.2"
+lazy_static = "1.0"
+
+[[bin]]
+name = "web3rs"
+path = "src/main.rs"
+
+[[bin]]
+name = "ipc"
+path = "src/ipc.rs"
+
+[[bin]]
+name = "ens"
+path = "src/ens.rs"

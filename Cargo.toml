@@ -14,15 +14,3 @@ readme = "README.md"
 web3 = "0.3.1"
 tiny-keccak = "1.4.2"
 lazy_static = "1.0"
-
-[[bin]]
-name = "web3rs"
-path = "src/main.rs"
-
-[[bin]]
-name = "ipc"
-path = "src/ipc.rs"
-
-[[bin]]
-name = "ens"
-path = "src/ens.rs"

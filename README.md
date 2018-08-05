@@ -1,4 +1,4 @@
-# rust-ens
+# rust-ens [![](https://travis-ci.org/hhatto/rust-ens.svg?branch=master)](https://travis-ci.org/hhatto/rust-ens)
 
 Rust ENS interface, based on [rust-web3](https://github.com/tomusdrw/rust-web3).
 

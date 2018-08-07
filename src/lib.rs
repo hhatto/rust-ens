@@ -21,78 +21,76 @@ lazy_static! {
     };
 }
 
-struct Resolver {
-    name: String
+#[derive(Debug)]
+struct Resolver<T: web3::Transport> {
+    contract: Contract<T>,
 }
 
-impl Resolver {
-    fn new(name: &str) -> Self {
-        Self {
-            name: name.to_string()
-        }
-    }
-
-    fn get(self, name: &str) {
-    }
-}
-
-//fn resolve(name: &str) -> Vec<u7> {
-//    let resolver = Resolver::new(name);
-//    let nhash = namehash(name);
-//    let addr = resolver.get(nhash);
-//    addr
-//}
-
-//fn address(name: &str) -> Vec<u7> {
-//    resolve(name)
-//}
-
-#[derive(Debug, Clone)]
-pub struct ENS<T: web3::Transport> {
-    web3: web3::Web3<T>,
-}
-
-impl<T: web3::Transport> ENS<T> {
-
-    pub fn new(web3: web3::Web3<T>) -> Self {
-        ENS {
-            web3: web3,
-        }
-    }
-
-    pub fn name(&self, address: Address) -> Result<String, String> {
-        let contract = Contract::from_json(
-            self.web3.eth(),
-            ENS_SETTING.mainnet_addr,
-            include_bytes!("../contract/ENS.abi"),
-        ).expect("fail contract::from_json(ENS.abi)");
-        let addr = H256::from_slice(namehash(format!("{:x}.{}", address, ENS_REVERSE_REGISTRAR_DOMAIN).as_str()).as_slice());
-        let result = contract.query("resolver", (addr, ), None, Options::default(), None);
+impl<T: web3::Transport> Resolver<T> {
+    fn new(ens: &ENS<T>, resolver_addr: &str) -> Self {
+        let addr_namehash = H256::from_slice(namehash(resolver_addr).as_slice());
+        let result = ens.contract.query("resolver", (addr_namehash, ), None, Options::default(), None);
         let resolver_addr: Address = result.wait().expect("resolver.result.wait()");
 
         // resolve
         let resolver_contract = Contract::from_json(
-            self.web3.eth(),
+            ens.web3.eth(),
             resolver_addr,
             include_bytes!("../contract/PublicResolver.abi"),
         ).expect("fail load resolver contract");
+        Self {
+            contract: resolver_contract,
+        }
+    }
 
-        //let addr = H256::from_slice(namehash(format!("{:x}", address).as_str()).as_slice());
-        let result = resolver_contract.query("name", (addr, ), None, Options::default(), None);
+    fn address(self, name: &str) -> Result<Address, String> {
+        let name_namehash = H256::from_slice(namehash(name).as_slice());
+        let result = self.contract.query("addr", (name_namehash, ), None, Options::default(), None);
         match result.wait() {
             Ok(s) => Ok(s),
             Err(e) => Err(format!("error: name.result.wait(): {:?}", e)),
         }
     }
 
-    pub fn owner(&self, name: &str) -> Result<Address, String> {
+    fn name(self, resolver_addr: &str) -> Result<String, String> {
+        let addr_namehash = H256::from_slice(namehash(resolver_addr).as_slice());
+        let result = self.contract.query("name", (addr_namehash, ), None, Options::default(), None);
+        match result.wait() {
+            Ok(s) => Ok(s),
+            Err(e) => Err(format!("error: name.result.wait(): {:?}", e)),
+        }
+    }
+}
+
+#[derive(Debug)]
+pub struct ENS<T: web3::Transport> {
+    pub web3: web3::Web3<T>,
+    pub contract: Contract<T>,
+}
+
+impl<T: web3::Transport> ENS<T> {
+
+    pub fn new(web3: web3::Web3<T>) -> Self {
         let contract = Contract::from_json(
-            self.web3.eth(),
+            web3.eth(),
             ENS_SETTING.mainnet_addr,
             include_bytes!("../contract/ENS.abi"),
         ).expect("fail contract::from_json(ENS.abi)");
+        ENS {
+            web3: web3,
+            contract: contract, 
+        }
+    }
+
+    pub fn name(&self, address: Address) -> Result<String, String> {
+        let resolver_addr = format!("{:x}.{}", address, ENS_REVERSE_REGISTRAR_DOMAIN);
+        let resolver = Resolver::new(self, resolver_addr.as_str());
+        resolver.name(resolver_addr.as_str())
+    }
+
+    pub fn owner(&self, name: &str) -> Result<Address, String> {
         let ens_namehash = H256::from_slice(namehash(name).as_slice());
-        let result = contract.query("owner", (ens_namehash, ), None, Options::default(), None);
+        let result = self.contract.query("owner", (ens_namehash, ), None, Options::default(), None);
         match result.wait() {
             Ok(s) => Ok(s),
             Err(e) => Err(format!("error: owner.result.wait(): {:?}", e)),
@@ -100,28 +98,8 @@ impl<T: web3::Transport> ENS<T> {
     }
 
     pub fn address(&self, name: &str) -> Result<Address, String> {
-        let contract = Contract::from_json(
-            self.web3.eth(),
-            ENS_SETTING.mainnet_addr,
-            include_bytes!("../contract/ENS.abi"),
-        ).expect("fail contract::from_json(ENS.abi)");
-        let ens_namehash = H256::from_slice(namehash(name).as_slice());
-
-        let result = contract.query("resolver", (ens_namehash, ), None, Options::default(), None);
-        let resolver_addr: Address = result.wait().expect("resolver.result.wait()");
-
-        // resolve
-        let resolver_contract = Contract::from_json(
-            self.web3.eth(),
-            resolver_addr,
-            include_bytes!("../contract/PublicResolver.abi"),
-        ).expect("fail load resolver contract");
-
-        let result = resolver_contract.query("addr", (ens_namehash, ), None, Options::default(), None);
-        match result.wait() {
-            Ok(s) => Ok(s),
-            Err(e) => Err(format!("error: addr.result.wait(): {:?}", e)),
-        }
+        let resolver = Resolver::new(self, name);
+        resolver.address(name)
     }
 }
 

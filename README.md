@@ -1,6 +1,6 @@
 # rust-ens [![](https://travis-ci.org/hhatto/rust-ens.svg?branch=master)](https://travis-ci.org/hhatto/rust-ens) [![Latest Version](https://img.shields.io/crates/v/ens.svg)](https://crates.io/crates/ens)
 
-Rust ENS interface, based on [rust-web3](https://github.com/tomusdrw/rust-web3).
+Rust ENS(Ethereum Name Service) interface, based on [rust-web3](https://github.com/tomusdrw/rust-web3).
 
 ## Usage
 

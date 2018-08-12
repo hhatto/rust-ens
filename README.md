@@ -41,6 +41,7 @@ use ENS Contract from https://github.com/ensdomains/ens/tree/master/contracts .
 * PublicResolver.sol
 
 ```
+$ solc --bin --abi --optimize contract/ENS.sol -o contract
 $ solc --bin --abi --optimize contract/PublicResolver.sol -o contract
 $ ls contract
 ENS.abi             ENS.bin             ENS.sol             PublicResolver.abi  PublicResolver.bin  PublicResolver.sol

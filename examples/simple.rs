@@ -2,6 +2,7 @@ extern crate ens;
 extern crate web3;
 
 use web3::types::Address;
+use web3::futures::Future;
 use ens::ENS;
 
 
@@ -14,15 +15,15 @@ fn main() {
 
     let ens = ENS::new(web3::Web3::new(transport));
     let addr = {
-        match ens.address(ens_name) {
+        match ens.address(ens_name).wait() {
             Ok(addr) => addr,
             Err(_) => Address::new(),
         }
     };
     let owner_addr = {
-        ens.owner(ens_name).expect("ens.owner() error")
+        ens.owner(ens_name).wait().expect("ens.owner() error")
     };
-    let reverse_addr = match ens.name(addr) {
+    let reverse_addr = match ens.name(addr).wait() {
         Ok(name) => name,
         Err(_) => "unknown".to_string(),
     };

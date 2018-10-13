@@ -7,6 +7,7 @@ use web3::contract::{Contract, Options};
 use web3::types::{Address, H256};
 use web3::futures::Future;
 use tiny_keccak::Keccak;
+use std::sync::Arc;
 
 const ENS_MAINNET_ADDR: &str = "314159265dD8dbb310642f98f50C066173C1259b";
 const ENS_REVERSE_REGISTRAR_DOMAIN: &str = "addr.reverse";
@@ -27,29 +28,27 @@ struct Resolver<T: web3::Transport> {
 }
 
 impl<T: web3::Transport> Resolver<T> {
-    fn new(ens: &ENS<T>, resolver_addr: &str) -> Self {
+    fn new(ens: &ENS<T>, resolver_addr: &str) -> impl Future<Item=Self, Error=String> {
         let addr_namehash = H256::from_slice(namehash(resolver_addr).as_slice());
-        let result = ens.contract.query("resolver", (addr_namehash, ), None, Options::default(), None);
-        let resolver_addr: Address = result.wait().expect("resolver.result.wait()");
-
-        // resolve
-        let resolver_contract = Contract::from_json(
-            ens.web3.eth(),
-            resolver_addr,
-            include_bytes!("../contract/PublicResolver.abi"),
-        ).expect("fail load resolver contract");
-        Self {
-            contract: resolver_contract,
-        }
+        let web3 = ens.web3.clone();
+        ens.contract.query("resolver", (addr_namehash, ), None, Options::default(), None)
+            .map(move |resolver_addr| {
+                let resolver_contract = Contract::from_json(
+                    web3.eth(),
+                    resolver_addr,
+                    include_bytes!("../contract/PublicResolver.abi"),
+                ).expect("fail load resolver contract");
+                Self {
+                    contract: resolver_contract,
+                }
+            })
+            .map_err(|_| String::from("resolver.result.wait()"))
     }
 
-    fn address(self, name: &str) -> Result<Address, String> {
+    fn address(self, name: &str) -> impl Future<Item=Address, Error=String> {
         let name_namehash = H256::from_slice(namehash(name).as_slice());
-        let result = self.contract.query("addr", (name_namehash, ), None, Options::default(), None);
-        match result.wait() {
-            Ok(s) => Ok(s),
-            Err(e) => Err(format!("error: name.result.wait(): {:?}", e)),
-        }
+        self.contract.query("addr", (name_namehash, ), None, Options::default(), None)
+            .map_err(|e| format!("error: name.result.wait(): {:?}", e))
     }
 
     fn name(self, resolver_addr: &str) -> Result<String, String> {
@@ -64,7 +63,7 @@ impl<T: web3::Transport> Resolver<T> {
 
 #[derive(Debug)]
 pub struct ENS<T: web3::Transport> {
-    pub web3: web3::Web3<T>,
+    pub web3: Arc<web3::Web3<T>>,
     pub contract: Contract<T>,
 }
 
@@ -77,29 +76,27 @@ impl<T: web3::Transport> ENS<T> {
             include_bytes!("../contract/ENS.abi"),
         ).expect("fail contract::from_json(ENS.abi)");
         ENS {
-            web3: web3,
+            web3: Arc::new(web3),
             contract: contract, 
         }
     }
 
-    pub fn name(&self, address: Address) -> Result<String, String> {
+    pub fn name(&self, address: Address) -> impl Future<Item=String, Error=String> {
         let resolver_addr = format!("{:x}.{}", address, ENS_REVERSE_REGISTRAR_DOMAIN);
-        let resolver = Resolver::new(self, resolver_addr.as_str());
-        resolver.name(resolver_addr.as_str())
+        Resolver::new(self, resolver_addr.as_str())
+            .and_then(move |resolver| resolver.name(resolver_addr.as_str()))
     }
 
-    pub fn owner(&self, name: &str) -> Result<Address, String> {
+    pub fn owner(&self, name: &str) -> impl Future<Item=Address, Error=String> {
         let ens_namehash = H256::from_slice(namehash(name).as_slice());
-        let result = self.contract.query("owner", (ens_namehash, ), None, Options::default(), None);
-        match result.wait() {
-            Ok(s) => Ok(s),
-            Err(e) => Err(format!("error: owner.result.wait(): {:?}", e)),
-        }
+        self.contract.query("owner", (ens_namehash, ), None, Options::default(), None)
+            .map_err(|e| format!("error: owner.result.wait(): {:?}", e))
     }
 
-    pub fn address(&self, name: &str) -> Result<Address, String> {
-        let resolver = Resolver::new(self, name);
-        resolver.address(name)
+    pub fn address(&self, name: &str) -> impl Future<Item=Address, Error=String> {
+        let name = name.to_string();
+        Resolver::new(self, &name)
+            .and_then(move |resolver| resolver.address(&name))
     }
 }
 

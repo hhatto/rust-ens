@@ -70,9 +70,13 @@ pub struct ENS<T: web3::Transport> {
 impl<T: web3::Transport> ENS<T> {
 
     pub fn new(web3: web3::Web3<T>) -> Self {
+        Self::with_ens_addr(web3, ENS_SETTING.mainnet_addr)
+    }
+
+    pub fn with_ens_addr(web3: web3::Web3<T>, ens_addr: Address) -> Self {
         let contract = Contract::from_json(
             web3.eth(),
-            ENS_SETTING.mainnet_addr,
+            ens_addr,
             include_bytes!("../contract/ENS.abi"),
         ).expect("fail contract::from_json(ENS.abi)");
         ENS {

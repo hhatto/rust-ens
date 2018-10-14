@@ -22,6 +22,7 @@ fn main() {
     };
     let addr = ens.address(&ens_root, &ens_name).wait().unwrap_or(Address::new());
     let content = ens.content(&ens_root, &ens_name).wait().unwrap_or(H256::new());
+    let multihash = ens.multihash(&ens_root, &ens_name).wait().unwrap_or(Vec::new());
     let owner_addr = ens.owner(&ens_root).wait().expect("ens.owner() error");
     let reverse_addr = ens.name(addr).wait().unwrap_or("unknown".to_string());
 
@@ -30,4 +31,5 @@ fn main() {
     println!("addr      : {:?}", addr);
     println!("rev_addr  : {}", reverse_addr);
     println!("content   : {:?}", content);
+    println!("multihash : {:?}", multihash);
 }

@@ -69,6 +69,30 @@ impl<T: web3::Transport> Resolver<T> {
             .map_err(|e| format!("error: set_content.result.wait(): {:?}", e))
     }
 
+    fn multihash(self, name: &str) -> impl Future<Item=Vec<u8>, Error=String> {
+        let name_namehash = H256::from_slice(namehash(name).as_slice());
+        self.contract.query("multihash", (name_namehash, ), None, Options::default(), None)
+            .map_err(|e| format!("error: multihash.result.wait(): {:?}", e))
+    }
+
+    fn set_multihash(self, name: &str, multihash: Vec<u8>, owner: Address) -> impl Future<Item=H256, Error=String> {
+        let name_namehash = H256::from_slice(namehash(name).as_slice());
+        self.contract.call("setMultihash", (name_namehash, multihash), owner, Options::default())
+            .map_err(|e| format!("error: set_multihash.result.wait(): {:?}", e))
+    }
+
+    fn text(self, name: &str) -> impl Future<Item=String, Error=String> {
+        let name_namehash = H256::from_slice(namehash(name).as_slice());
+        self.contract.query("text", (name_namehash, ), None, Options::default(), None)
+            .map_err(|e| format!("error: text.result.wait(): {:?}", e))
+    }
+
+    fn set_text(self, name: &str, text: String, owner: Address) -> impl Future<Item=H256, Error=String> {
+        let name_namehash = H256::from_slice(namehash(name).as_slice());
+        self.contract.call("setText", (name_namehash, text), owner, Options::default())
+            .map_err(|e| format!("error: set_text.result.wait(): {:?}", e))
+    }
+
     fn name(self, resolver_addr: &str) -> impl Future<Item=String, Error=String> {
         let addr_namehash = H256::from_slice(namehash(resolver_addr).as_slice());
         self.contract.query("name", (addr_namehash, ), None, Options::default(), None)
@@ -140,6 +164,36 @@ impl<T: web3::Transport> ENS<T> {
             .and_then(move |owner|
                 Resolver::new(self, &root)
                     .and_then(move |resolver| resolver.set_content(&name, content, owner)))
+    }
+
+    pub fn multihash(&self, root: &str, name: &str) -> impl Future<Item=Vec<u8>, Error=String> {
+        let name = name.to_string();
+        Resolver::new(self, &root)
+            .and_then(move |resolver| resolver.multihash(&name))
+    }
+
+    pub fn set_multihash(&self, root: &str, name: &str, multihash: Vec<u8>) -> impl Future<Item=H256, Error=String> + '_ {
+        let root = root.to_string();
+        let name = name.to_string();
+        self.owner(&root)
+            .and_then(move |owner|
+                Resolver::new(self, &root)
+                    .and_then(move |resolver| resolver.set_multihash(&name, multihash, owner)))
+    }
+
+    pub fn text(&self, root: &str, name: &str) -> impl Future<Item=String, Error=String> {
+        let name = name.to_string();
+        Resolver::new(self, &root)
+            .and_then(move |resolver| resolver.text(&name))
+    }
+
+    pub fn set_text(&self, root: &str, name: &str, text: String) -> impl Future<Item=H256, Error=String> + '_ {
+        let root = root.to_string();
+        let name = name.to_string();
+        self.owner(&root)
+            .and_then(move |owner|
+                Resolver::new(self, &root)
+                    .and_then(move |resolver| resolver.set_text(&name, text, owner)))
     }
 }
 

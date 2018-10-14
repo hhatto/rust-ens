@@ -51,6 +51,12 @@ impl<T: web3::Transport> Resolver<T> {
             .map_err(|e| format!("error: address.result.wait(): {:?}", e))
     }
 
+    fn set_address(self, name: &str, address: Address, owner: Address) -> impl Future<Item=H256, Error=String> {
+        let name_namehash = H256::from_slice(namehash(name).as_slice());
+        self.contract.call("setAddr", (name_namehash, address), owner, Options::default())
+            .map_err(|e| format!("error: setAddr.result.wait(): {:?}", e))
+    }
+
     fn name(self, resolver_addr: &str) -> impl Future<Item=String, Error=String> {
         let addr_namehash = H256::from_slice(namehash(resolver_addr).as_slice());
         self.contract.query("name", (addr_namehash, ), None, Options::default(), None)
@@ -98,6 +104,14 @@ impl<T: web3::Transport> ENS<T> {
         let name = name.to_string();
         Resolver::new(self, &name)
             .and_then(move |resolver| resolver.address(&name))
+    }
+
+    pub fn set_address(&self, name: &str, address: Address) -> impl Future<Item=H256, Error=String> + '_ {
+        let name = name.to_string();
+        self.owner(&name)
+            .and_then(move |owner|
+                Resolver::new(self, &name)
+                    .and_then(move |resolver| resolver.set_address(&name, address, owner)))
     }
 }
 

@@ -54,7 +54,19 @@ impl<T: web3::Transport> Resolver<T> {
     fn set_address(self, name: &str, address: Address, owner: Address) -> impl Future<Item=H256, Error=String> {
         let name_namehash = H256::from_slice(namehash(name).as_slice());
         self.contract.call("setAddr", (name_namehash, address), owner, Options::default())
-            .map_err(|e| format!("error: setAddr.result.wait(): {:?}", e))
+            .map_err(|e| format!("error: set_address.result.wait(): {:?}", e))
+    }
+
+    fn content(self, name: &str) -> impl Future<Item=H256, Error=String> {
+        let name_namehash = H256::from_slice(namehash(name).as_slice());
+        self.contract.query("content", (name_namehash, ), None, Options::default(), None)
+            .map_err(|e| format!("error: content.result.wait(): {:?}", e))
+    }
+
+    fn set_content(self, name: &str, content: H256, owner: Address) -> impl Future<Item=H256, Error=String> {
+        let name_namehash = H256::from_slice(namehash(name).as_slice());
+        self.contract.call("setContent", (name_namehash, content), owner, Options::default())
+            .map_err(|e| format!("error: set_content.result.wait(): {:?}", e))
     }
 
     fn name(self, resolver_addr: &str) -> impl Future<Item=String, Error=String> {
@@ -94,24 +106,40 @@ impl<T: web3::Transport> ENS<T> {
             .and_then(move |resolver| resolver.name(resolver_addr.as_str()))
     }
 
-    pub fn owner(&self, name: &str) -> impl Future<Item=Address, Error=String> {
-        let ens_namehash = H256::from_slice(namehash(name).as_slice());
-        self.contract.query("owner", (ens_namehash, ), None, Options::default(), None)
+    pub fn owner(&self, root: &str) -> impl Future<Item=Address, Error=String> {
+        let ens_roothash = H256::from_slice(namehash(root).as_slice());
+        self.contract.query("owner", (ens_roothash, ), None, Options::default(), None)
             .map_err(|e| format!("error: owner.result.wait(): {:?}", e))
     }
 
-    pub fn address(&self, name: &str) -> impl Future<Item=Address, Error=String> {
+    pub fn address(&self, root: &str, name: &str) -> impl Future<Item=Address, Error=String> {
         let name = name.to_string();
-        Resolver::new(self, &name)
+        Resolver::new(self, &root)
             .and_then(move |resolver| resolver.address(&name))
     }
 
-    pub fn set_address(&self, name: &str, address: Address) -> impl Future<Item=H256, Error=String> + '_ {
+    pub fn set_address(&self, root: &str, name: &str, address: Address) -> impl Future<Item=H256, Error=String> + '_ {
+        let root = root.to_string();
         let name = name.to_string();
-        self.owner(&name)
+        self.owner(&root)
             .and_then(move |owner|
-                Resolver::new(self, &name)
+                Resolver::new(self, &root)
                     .and_then(move |resolver| resolver.set_address(&name, address, owner)))
+    }
+
+    pub fn content(&self, root: &str, name: &str) -> impl Future<Item=H256, Error=String> {
+        let name = name.to_string();
+        Resolver::new(self, &root)
+            .and_then(move |resolver| resolver.content(&name))
+    }
+
+    pub fn set_content(&self, root: &str, name: &str, content: H256) -> impl Future<Item=H256, Error=String> + '_ {
+        let root = root.to_string();
+        let name = name.to_string();
+        self.owner(&root)
+            .and_then(move |owner|
+                Resolver::new(self, &root)
+                    .and_then(move |resolver| resolver.set_content(&name, content, owner)))
     }
 }
 

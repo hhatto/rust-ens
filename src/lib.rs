@@ -48,16 +48,13 @@ impl<T: web3::Transport> Resolver<T> {
     fn address(self, name: &str) -> impl Future<Item=Address, Error=String> {
         let name_namehash = H256::from_slice(namehash(name).as_slice());
         self.contract.query("addr", (name_namehash, ), None, Options::default(), None)
-            .map_err(|e| format!("error: name.result.wait(): {:?}", e))
+            .map_err(|e| format!("error: address.result.wait(): {:?}", e))
     }
 
-    fn name(self, resolver_addr: &str) -> Result<String, String> {
+    fn name(self, resolver_addr: &str) -> impl Future<Item=String, Error=String> {
         let addr_namehash = H256::from_slice(namehash(resolver_addr).as_slice());
-        let result = self.contract.query("name", (addr_namehash, ), None, Options::default(), None);
-        match result.wait() {
-            Ok(s) => Ok(s),
-            Err(e) => Err(format!("error: name.result.wait(): {:?}", e)),
-        }
+        self.contract.query("name", (addr_namehash, ), None, Options::default(), None)
+            .map_err(|e| format!("error: name.result.wait(): {:?}", e))
     }
 }
 
